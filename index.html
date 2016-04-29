@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<!--https://github.com/borismus/webvr-boilerplate/blob/master/index.html-->
+<html lang="en">
+<head>
+<title>Dreamscope</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<style>
+body {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  background-color: #000;
+  color: #fff;
+  margin: 0px;
+  padding: 0;
+  overflow: hidden;
+}
+</style>
+</head>
+
+<body>
+
+</body>
+
+<!--
+  three.js 3d library
+  -->
+<script src="bower_components/threejs/build/three.js"></script>
+
+<!--
+  VRControls.js acquires positional information from connected VR devices and applies the transformations to a three.js camera object.
+   -->
+<script src="bower_components/threejs/examples/js/controls/VRControls.js"></script>
+
+<!--
+  VREffect.js handles stereo camera setup and rendering.
+  -->
+<script src="bower_components/threejs/examples/js/effects/VREffect.js"></script>
+
+<!--
+  A polyfill for WebVR using the Device{Motion,Orientation}Event API.
+  -->
+<script src="bower_components/webvr-polyfill/build/webvr-polyfill.js"></script>
+
+<!--
+  Helps enter and exit VR mode, provides best practices while in VR.
+  -->
+<script src="build/webvr-manager.js"></script>
+    
+    <script src="three/dat.js"></script>
+		<script src="three/stats.js"></script>
+		<script src="three/EffectComposer.js"></script>
+        <script src="three/geometryComposer.js"></script>
+		<script src="three/RenderPass.js"></script>
+		<script src="three/ShaderPass.js"></script>
+        <script src="three/MaskPass.js"></script> 
+        <script src="three/trackball.js"></script>
+        <script src="three/threex.videotexture.js"></script>
+
+<script>
+/*
+ * Debug parameters.
+ */
+
+// Enable distortion everywhere.
+//WEBVR_FORCE_DISTORTION = true;
+// Override the distortion background color.
+//WEBVR_BACKGROUND_COLOR = new THREE.Vector4(1, 0, 0, 1);
+// Change the tracking prediction mode.
+//WEBVR_PREDICTION_MODE = 2;
+// In prediction mode, change how far into the future to predict.
+//WEBVR_PREDICTION_TIME_MS = 100;
+</script>
+
+<script>
+//Setup three.js WebGL renderer
+var renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+
+// Append the canvas element created by the renderer to document body element.
+document.body.appendChild(renderer.domElement);
+
+// Create a three.js scene.
+var scene = new THREE.Scene();
+
+// Create a three.js camera.
+var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.3, 10000);
+
+
+// Apply VR headset positional data to camera.
+var controls = new THREE.VRControls(camera);
+
+// Apply VR stereo rendering to renderer.
+var effect = new THREE.VREffect(renderer);
+effect.setSize(window.innerWidth, window.innerHeight);
+
+// Create a VR manager helper to enter and exit VR mode.
+var manager = new WebVRManager(renderer, effect, {hideButton: false});
+
+// Create 3D objects.
+var geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+var material = new THREE.MeshNormalMaterial();
+var testcube;
+var cubeHolder;
+var cubeHolderii;
+var updateFacts = [];
+var vmaterial;
+var lastTimeMsec= null;
+var check = [
+            false,
+            false,
+            false,
+            false,
+        ]
+
+//create video material
+var url	= 'assets/deep.webm'
+var videoTexture= new THREEx.VideoTexture(url)
+var video = videoTexture.video
+video.volume = 0;
+
+updateFacts.push(function(delta, now){
+    videoTexture.update(delta, now)
+})
+
+vmaterial = new THREE.MeshBasicMaterial({
+    map	: videoTexture.texture,
+    transparent: true, 
+    opacity: 0.8
+});
+    
+material = new THREE.MeshNormalMaterial();
+cubeHolder = new THREE.Object3D();
+cubeHolderii = new THREE.Object3D();
+composeGeometry(cubeHolder, vmaterial, 650, {nested : false, dims : [0.9,0.1,0.1], spread: 9, randRot : true});
+    
+cubeHolder.position.z = -1;
+scene.add(cubeHolder);
+scene.add(cubeHolderii);
+    
+// Also add a repeating grid as a skybox.
+var boxWidth = 10;
+var texture = THREE.ImageUtils.loadTexture(
+  'img/box.png'
+);
+    
+texture.wrapS = THREE.RepeatWrapping;
+texture.wrapT = THREE.RepeatWrapping;
+texture.repeat.set(boxWidth, boxWidth);
+var geometry = new THREE.BoxGeometry(boxWidth, boxWidth, boxWidth);
+    
+var material = new THREE.MeshBasicMaterial({
+  map: texture,
+  color: 0x333333,
+  side: THREE.BackSide
+});
+var skybox = new THREE.Mesh(geometry, vmaterial);
+scene.add(skybox);
+
+// Kick off animation loop
+animate(0);
+    
+// Request animation frame loop function
+function animate(nowMsec) {
+    now = nowMsec;
+    lastTimeMsec	= lastTimeMsec || nowMsec-1000/60
+    var deltaMsec	= Math.min(200, nowMsec - lastTimeMsec)
+    lastTimeMsec	= nowMsec
+                
+    // Apply rotation to cube mesh
+    cubeHolder.rotation.y += 0.003;
+    cubeHolder.rotation.z -= 0.003;
+    cubeHolderii.rotation.y -= 0.003;
+    cubeHolderii.rotation.z += 0.003;
+    cubeHolder.position = Math.sin(nowMsec)
+    //cubeHolder.rotation.y += nowMsec/20000;
+    
+    //Re-Compose
+    var interval = (nowMsec/4)%2000;
+    if (interval > 0 && interval < 2000) { //28
+        if (check[0] == false) {
+            check[0] = true;
+            check[1] = false;
+            check[2] = false;
+            check[3] = false;
+            composeGeometry(cubeHolderii, vmaterial, 350, {nested : false, dims : [0.9,0.3,0.3], spread: 8.5, randRot : true});
+            composeGeometry(cubeHolder, vmaterial, 350, {nested : false, dims : [0.9,0.3,0.3], spread: 8.5, randRot : true});
+        }
+
+    } else if (interval > 1000 && interval < 2000) {
+       if (check[1] == false) {
+            check[0] = false;
+            check[1] = true;
+            check[2] = false;
+            check[3] = false;
+            composeGeometry(cubeHolder, vmaterial, 650, {nested : false, dims : [0.9,0.3,0.3], spread: 8.5, randRot : true, type: 'TETRAHEDRON'});
+        }
+    } else if (interval > 2000 && interval < 3000) {
+       if (check[2] == false) {
+            check[0] = false;
+            check[1] = false;
+            check[2] = true;
+            check[3] = false;
+            composeGeometry(cubeHolder, vmaterial, 650, {nested : false, dims : [0.9,0.3,0.3], spread: 8.5, randRot : true});
+        }
+    } else if (interval > 3000 && interval < 4000) {
+       if (check[3] == false) {
+            check[0] = false;
+            check[1] = false;
+            check[2] = false;
+            check[3] = true;
+            composeGeometry(cubeHolder, vmaterial, 0, {nested : true, dims : [0.4,0.4,0.4], spread: 3, randRot : true, type:"TETRAHEDRON"});
+        }
+    } else {
+
+    }
+    
+    
+
+  // Update VR headset position and apply to camera.
+  controls.update();
+
+  // Render the scene through the manager.
+  manager.render(scene, camera, nowMsec);
+    
+    updateFacts.forEach(function(updateFn){
+                    updateFn(deltaMsec/1000, nowMsec/1000)
+                })
+
+  requestAnimationFrame(animate);
+}
+
+
+
+// Reset the position sensor when 'z' pressed.
+function onKey(event) {
+  if (event.keyCode == 90) { // z
+    controls.resetSensor();
+  }
+};
+
+window.addEventListener('keydown', onKey, true);
+
+// Handle window resizes
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  effect.setSize(window.innerWidth, window.innerHeight);
+}
+
+window.addEventListener('resize', onWindowResize, false);
+
+</script>
+
+</html>
